@@ -32,7 +32,7 @@ if __name__ == "__main__":
     output_dir = ROOT / "data" / "expected"
     output_dir.mkdir(exist_ok=True)
 
-    for n in [10, 50, 100]:
+    for n in [10, 50, 100, 200, 300]:
         A = load_matrix(ROOT / "data" / f"A_{n}.csv")
         B = load_matrix(ROOT / "data" / f"B_{n}.csv")
 

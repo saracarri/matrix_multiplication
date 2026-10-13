@@ -2,3 +2,5 @@ language,size,estimated_array_storage_mib
 C,10,0.001144
 C,50,0.028610
 C,100,0.114441
+C,200,0.457764
+C,300,1.029968

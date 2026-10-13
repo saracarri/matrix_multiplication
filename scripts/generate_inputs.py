@@ -23,9 +23,8 @@ def save_matrix(matrix, filename):
 
 
 if __name__ == "__main__":
-    sizes = [10, 50, 100]
+    sizes = [10, 50, 100, 200, 300]    
     data_dir = Path(__file__).resolve().parent.parent / "data"
-
     data_dir.mkdir(exist_ok=True)
 
     for n in sizes:

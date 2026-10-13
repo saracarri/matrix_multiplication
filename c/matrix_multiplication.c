@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -53,6 +52,34 @@ long long matrix_checksum(int n, int matrix[n][n]) {
     return sum;
 }
 
+
+int validate_matrix(int n, int C[n][n]) {
+    int (*expected)[n] = malloc(sizeof(int[n][n]));
+
+    if (expected == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
+
+    char filename[100];
+    snprintf(filename, sizeof(filename), "data/expected/C_%d.csv", n);
+
+    load_matrix(filename, n, expected);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (C[i][j] != expected[i][j]) {
+                free(expected);
+                return 0;
+            }
+        }
+    }
+
+    free(expected);
+    return 1;
+}
+
+
 double current_time(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -97,20 +124,35 @@ void benchmark(int n, int repetitions, FILE *csv) {
     checksum_sink = matrix_checksum(n, C);
 
     for (int rep = 1; rep <= repetitions; rep++) {
+        
+        int batch_size = (n <= 10) ? 1000 : 1;
+
         double start = current_time();
 
-        matrix_multiplication(n, A, B, C);
+        for (int b = 0; b < batch_size; b++) {
+            matrix_multiplication(n, A, B, C);
+        }
 
         double end = current_time();
-        double elapsed = end - start;
+        double elapsed = (end - start) / batch_size;
+
 
         checksum_sink = matrix_checksum(n, C);
         times[rep - 1] = elapsed;
 
-        fprintf(csv, "C,%d,%d,%.9f\n", n, rep, elapsed);
+        fprintf(csv, "C,%d,%d,%d,%.9f\n", n, rep, batch_size, elapsed);
         printf("Repetition %d: %.6f ms\n", rep, elapsed * 1000);
     }
 
+    if (!validate_matrix(n, C)) {
+        fprintf(stderr, "Incorrect result for size %d\n", n);
+        free(A);
+        free(B);
+        free(C);
+        exit(1);
+    }
+
+    printf("Validation passed for %dx%d\n", n, n);
     qsort(times, 5, sizeof(double), compare_doubles);
 
     double median = times[2] * 1000;
@@ -131,9 +173,23 @@ double measure_memory(int n) {
 }
 
 
-int main(void) {
-    int sizes[] = {10, 50, 100};
+
+int main(int argc, char *argv[]) {
+    int sizes[] = {10, 50, 100, 200, 300};
     int count = sizeof(sizes) / sizeof(sizes[0]);
+
+    if (argc > 1) {
+        int n = atoi(argv[1]);
+
+        if (n != 10 && n != 50 && n != 100 &&
+            n != 200 && n != 300) {
+            fprintf(stderr, "Invalid matrix size\n");
+            return 1;
+        }
+
+        sizes[0] = n;
+        count = 1;
+    }
 
     FILE *csv = fopen("results/c_times.csv", "w");
 
@@ -150,7 +206,7 @@ int main(void) {
         return 1;
     }
 
-    fprintf(csv, "language,size,repetition,time_seconds\n");
+    fprintf(csv, "language,size,repetition,batch_size,time_seconds\n");
     fprintf(memory_csv, "language,size,estimated_array_storage_mib\n");
 
     for (int i = 0; i < count; i++) {

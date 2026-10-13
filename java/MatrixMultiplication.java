@@ -43,6 +43,20 @@ public class MatrixMultiplication {
     }
 
 
+public static boolean validateMatrix(int[][] C, int n) throws IOException {
+    int[][] expected = loadMatrix("data/expected/C_" + n + ".csv", n);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (C[i][j] != expected[i][j]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
     public static long matrixChecksum(int[][] matrix) {
         long sum = 0;
 
@@ -80,6 +94,11 @@ public class MatrixMultiplication {
             checksumSink = matrixChecksum(C);
             times[rep] = (end - start) / 1_000_000_000.0;
         }
+        if (!validateMatrix(C, n)) {
+            throw new IllegalStateException("Incorrect result for size " + n);
+        }
+
+        System.out.println("Validation passed for " + n + "x" + n);
 
         return times;
     }
@@ -93,7 +112,9 @@ public class MatrixMultiplication {
     }
 
     public static void main(String[] args) throws IOException {
-        int[] sizes = {10, 50, 100};
+        int[] sizes = args.length > 0
+            ? new int[]{Integer.parseInt(args[0])}
+            : new int[]{10, 50, 100, 200, 300};
 
         PrintWriter writer = new PrintWriter(new FileWriter("results/java_times.csv"));
         writer.println("language,size,repetition,time_seconds");

@@ -2,7 +2,7 @@ import time
 import statistics
 import csv
 import tracemalloc
-
+import sys
 
 def matrix_multiplication(A, B, C):
     n = len(A)
@@ -80,7 +80,7 @@ def measure_memory(n):
 
 
 if __name__ == "__main__":
-    sizes = [10, 50, 100]
+    sizes = [int(sys.argv[1])] if len(sys.argv) > 1 else [10, 50, 100, 200, 300]
 
     with open("results/python_times.csv", "w", newline="") as time_file, \
          open("results/python_memory.csv", "w", newline="") as memory_file:
