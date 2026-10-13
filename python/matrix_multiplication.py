@@ -1,36 +1,30 @@
-import random
 import time
 import statistics
 import csv
 import tracemalloc
 
-def matrix_multiplication(A, B):
+
+def matrix_multiplication(A, B, C):
     n = len(A)
-    C = []
-
-    for i in range(n):
-        fila = []
-        for j in range(n):
-            fila.append(0)
-        C.append(fila)
 
     for i in range(n):
         for j in range(n):
+            C[i][j] = 0
+
             for k in range(n):
                 C[i][j] += A[i][k] * B[k][j]
 
     return C
 
 
-def generate_matrix(n, seed):
-    rng = random.Random(seed)
+def load_matrix(filename):
     matrix = []
 
-    for i in range(n):
-        row = []
-        for j in range(n):
-            row.append(rng.randint(0, 9))
-        matrix.append(row)
+    with open(filename, "r", newline="") as file:
+        reader = csv.reader(file)
+
+        for row in reader:
+            matrix.append([int(value) for value in row])
 
     return matrix
 
@@ -44,13 +38,13 @@ def reference_multiplication(A, B):
     ]
 
 
-
 def benchmark(n, repetitions=5):
-    A = generate_matrix(n, 42)
-    B = generate_matrix(n, 43)
+    A = load_matrix(f"data/A_{n}.csv")
+    B = load_matrix(f"data/B_{n}.csv")
+    C = [[0 for _ in range(n)] for _ in range(n)]
 
     # Warm-up (not measured)
-    matrix_multiplication(A, B)
+    matrix_multiplication(A, B, C)
 
     expected = reference_multiplication(A, B)
 
@@ -59,7 +53,7 @@ def benchmark(n, repetitions=5):
     for rep in range(repetitions):
         start = time.perf_counter()
 
-        C = matrix_multiplication(A, B)
+        matrix_multiplication(A, B, C)
 
         end = time.perf_counter()
 
@@ -71,18 +65,18 @@ def benchmark(n, repetitions=5):
 
 
 def measure_memory(n):
-    A = generate_matrix(n, 42)
-    B = generate_matrix(n, 43)
+    A = load_matrix(f"data/A_{n}.csv")
+    B = load_matrix(f"data/B_{n}.csv")
+    C = [[0 for _ in range(n)] for _ in range(n)]
 
     tracemalloc.start()
 
-    C = matrix_multiplication(A, B)
+    matrix_multiplication(A, B, C)
 
     current, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
 
     return peak / (1024 * 1024)
-
 
 
 if __name__ == "__main__":

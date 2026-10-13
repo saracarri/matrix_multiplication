@@ -1,0 +1,4 @@
+language,size,estimated_array_storage_mib
+Java,10,0.0011444091796875
+Java,50,0.0286102294921875
+Java,100,0.11444091796875

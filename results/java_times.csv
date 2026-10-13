@@ -1,0 +1,16 @@
+language,size,repetition,time_seconds
+Java,10,1,4.32E-5
+Java,10,2,4.3E-5
+Java,10,3,4.24E-5
+Java,10,4,4.25E-5
+Java,10,5,4.24E-5
+Java,50,1,4.89E-4
+Java,50,2,6.131E-4
+Java,50,3,6.58E-4
+Java,50,4,4.961E-4
+Java,50,5,4.912E-4
+Java,100,1,0.0030588
+Java,100,2,0.0030403
+Java,100,3,0.0030051
+Java,100,4,0.0030452
+Java,100,5,0.0030253
