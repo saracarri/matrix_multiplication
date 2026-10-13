@@ -131,13 +131,13 @@ void benchmark(int n, int repetitions, FILE *csv) {
 
         for (int b = 0; b < batch_size; b++) {
             matrix_multiplication(n, A, B, C);
+            checksum_sink = C[0][0];
         }
 
         double end = current_time();
         double elapsed = (end - start) / batch_size;
 
 
-        checksum_sink = matrix_checksum(n, C);
         times[rep - 1] = elapsed;
 
         fprintf(csv, "C,%d,%d,%d,%.9f\n", n, rep, batch_size, elapsed);
