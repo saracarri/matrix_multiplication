@@ -138,6 +138,15 @@ The script creates:
 
 These files are saved in `results/figures/`.
 
+
+The median execution times and interquartile ranges (IQR) can be calculated directly from the raw CSV measurements using:
+
+```bash
+python scripts/check_results.py
+```
+
+This script displays the median and IQR for each matrix size in Python, Java and C, allowing the reported results to be verified.
+
 ## Correctness
 
 The implementations were checked using known small matrices, including identity and zero matrices.
