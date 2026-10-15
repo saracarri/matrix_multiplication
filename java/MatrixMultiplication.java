@@ -111,7 +111,61 @@ public static boolean validateMatrix(int[][] C, int n) throws IOException {
         return totalBytes / (1024.0 * 1024.0);
     }
 
+        public static void checkResult(String name, int[][] actual, int[][] expected) {
+        if (!Arrays.deepEquals(actual, expected)) {
+            throw new IllegalStateException("Correctness test failed: " + name);
+        }
+
+        System.out.println("PASS " + name);
+    }
+
+    public static void runCorrectnessTests() {
+        int[][] a = {{1, 2}, {3, 4}};
+        int[][] b = {{5, 6}, {7, 8}};
+        int[][] result = new int[2][2];
+        matrixMultiplication(a, b, result);
+        checkResult("2x2 known result", result, new int[][]{{19, 22}, {43, 50}});
+
+        int n = 4;
+        int[][] m = new int[n][n];
+        int[][] identity = new int[n][n];
+        int[][] zero = new int[n][n];
+
+        for (int i = 0; i < n; i++) {
+            identity[i][i] = 1;
+
+            for (int j = 0; j < n; j++) {
+                m[i][j] = i * n + j + 1;
+            }
+        }
+
+        result = new int[n][n];
+        matrixMultiplication(m, identity, result);
+        checkResult("A x I = A", result, m);
+
+        result = new int[n][n];
+        matrixMultiplication(identity, m, result);
+        checkResult("I x A = A", result, m);
+
+        result = new int[n][n];
+        for (int[] row : result) {
+            Arrays.fill(row, 7);
+        }
+        matrixMultiplication(m, zero, result);
+        checkResult("A x 0 = 0", result, zero);
+
+        result = new int[n][n];
+        matrixMultiplication(zero, m, result);
+        checkResult("0 x A = 0", result, zero);
+
+        System.out.println("All Java correctness tests passed");
+    }
+
     public static void main(String[] args) throws IOException {
+        if (args.length > 0 && args[0].equals("--test")) {
+            runCorrectnessTests();
+            return;
+        }
         int[] sizes = args.length > 0
             ? new int[]{Integer.parseInt(args[0])}
             : new int[]{10, 50, 100, 200, 300};

@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
+#include <string.h>
+
+#define TEST_N 4
 
 void matrix_multiplication(int n, int A[n][n], int B[n][n], int C[n][n]) {
     for (int i = 0; i < n; i++) {
@@ -172,11 +175,71 @@ double measure_memory(int n) {
     return total_bytes / (1024.0 * 1024.0);
 }
 
+int check_result(const char *name, int n, int C[n][n], int expected[n][n]) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (C[i][j] != expected[i][j]) {
+                printf("FAIL %s\n", name);
+                return 0;
+            }
+        }
+    }
 
+    printf("PASS %s\n", name);
+    return 1;
+}
+
+int run_correctness_tests(void) {
+    int passed = 1;
+
+    // 2x2 case with a result calculated by hand
+    int a[2][2] = {{1, 2}, {3, 4}};
+    int b[2][2] = {{5, 6}, {7, 8}};
+    int known[2][2] = {{19, 22}, {43, 50}};
+    int result2[2][2];
+
+    matrix_multiplication(2, a, b, result2);
+    passed &= check_result("2x2 known result", 2, result2, known);
+
+    int m[TEST_N][TEST_N];
+    int identity[TEST_N][TEST_N];
+    int zero[TEST_N][TEST_N];
+    int result[TEST_N][TEST_N];
+
+    for (int i = 0; i < TEST_N; i++) {
+        for (int j = 0; j < TEST_N; j++) {
+            m[i][j] = i * TEST_N + j + 1;
+            identity[i][j] = (i == j);
+            zero[i][j] = 0;
+        }
+    }
+
+    matrix_multiplication(TEST_N, m, identity, result);
+    passed &= check_result("A x I = A", TEST_N, result, m);
+
+    matrix_multiplication(TEST_N, identity, m, result);
+    passed &= check_result("I x A = A", TEST_N, result, m);
+
+    // result still holds non-zero values, so this also checks that it is reset
+    matrix_multiplication(TEST_N, m, zero, result);
+    passed &= check_result("A x 0 = 0", TEST_N, result, zero);
+
+    matrix_multiplication(TEST_N, zero, m, result);
+    passed &= check_result("0 x A = 0", TEST_N, result, zero);
+
+    if (passed) {
+        printf("All C correctness tests passed\n");
+    }
+
+    return passed;
+}
 
 int main(int argc, char *argv[]) {
     int sizes[] = {10, 50, 100, 200, 300};
     int count = sizeof(sizes) / sizeof(sizes[0]);
+    if (argc > 1 && strcmp(argv[1], "--test") == 0) {
+        return run_correctness_tests() ? 0 : 1;
+    }
 
     if (argc > 1) {
         int n = atoi(argv[1]);
