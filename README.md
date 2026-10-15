@@ -112,6 +112,7 @@ The theoretical array storage is calculated from the dimensions and numeric type
 
 Process memory is measured separately using psutil, which samples the resident set size (RSS) during execution.
 
+This script runs each program with a single matrix size, which overwrites the timing CSV files in `results/`. Run it before the Python, Java and C benchmarks, so that the full benchmark runs write the final timing results.
 Run:
 
 ```bash
@@ -149,7 +150,15 @@ This script displays the median and IQR for each matrix size in Python, Java and
 
 ## Correctness
 
-The implementations were checked using known small matrices, including identity and zero matrices.
+The implementations are checked using small matrices with known answers: a 2x2 product calculated by hand, A x I = A, I x A = A, A x 0 = 0 and 0 x A = 0. Run the tests with:
+
+```bash
+python scripts/test_correctness.py
+java -cp java MatrixMultiplication --test
+./c/matrix_multiplication.exe --test
+```
+
+Since integer arithmetic is exact, results must be identical and no numerical tolerance is needed.
 
 Reference results were also generated for the shared input matrices. Java and C compare their complete output matrices against these reference results. Python checks its results against a reference implementation.
 
