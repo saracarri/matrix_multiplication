@@ -113,6 +113,7 @@ The theoretical array storage is calculated from the dimensions and numeric type
 Process memory is measured separately using psutil, which samples the resident set size (RSS) during execution.
 
 This script runs each program with a single matrix size, which overwrites the timing CSV files in `results/`. Run it before the Python, Java and C benchmarks, so that the full benchmark runs write the final timing results.
+
 Run:
 
 ```bash
