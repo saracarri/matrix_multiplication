@@ -65,7 +65,13 @@ int validate_matrix(int n, int C[n][n]) {
     }
 
     char filename[100];
-    snprintf(filename, sizeof(filename), "../assignment1/data/expected/C_%d.csv", n);
+    if (n <= 300) {
+        snprintf(filename, sizeof(filename),
+                "../assignment1/data/expected/C_%d.csv", n);
+    } else {
+        snprintf(filename, sizeof(filename),
+                "data/expected/C_%d.csv", n);
+    }
 
     load_matrix(filename, n, expected);
 
@@ -116,10 +122,22 @@ void benchmark(int n, int repetitions, FILE *csv) {
 
     char filename[100];
 
-    snprintf(filename, sizeof(filename), "../assignment1/data/A_%d.csv", n);
+    if (n <= 300) {
+        snprintf(filename, sizeof(filename),
+                "../assignment1/data/A_%d.csv", n);
+    } else {
+        snprintf(filename, sizeof(filename),
+                "data/A_%d.csv", n);
+    }
     load_matrix(filename, n, A);
 
-    snprintf(filename, sizeof(filename), "../assignment1/data/B_%d.csv", n);
+    if (n <= 300) {
+        snprintf(filename, sizeof(filename),
+                "../assignment1/data/B_%d.csv", n);
+    } else {
+        snprintf(filename, sizeof(filename),
+                "data/B_%d.csv", n);
+    }
     load_matrix(filename, n, B);
 
     // Warm-up (not measured)
@@ -235,7 +253,7 @@ int run_correctness_tests(void) {
 }
 
 int main(int argc, char *argv[]) {
-    int sizes[] = {10, 50, 100, 200, 300};
+    int sizes[] = {10, 50, 100, 200, 300, 500, 750, 1000};
     int count = sizeof(sizes) / sizeof(sizes[0]);
     if (argc > 1 && strcmp(argv[1], "--test") == 0) {
         return run_correctness_tests() ? 0 : 1;
@@ -245,7 +263,8 @@ int main(int argc, char *argv[]) {
         int n = atoi(argv[1]);
 
         if (n != 10 && n != 50 && n != 100 &&
-            n != 200 && n != 300) {
+            n != 200 && n != 300 && n != 500 &&
+            n != 750 && n != 1000) {
             fprintf(stderr, "Invalid matrix size\n");
             return 1;
         }
