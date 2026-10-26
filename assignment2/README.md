@@ -72,83 +72,95 @@ assignment2/
 
 ## Compilation
 
-From the `assignment2` directory in MSYS2 UCRT64:
+## Reproducing the Experiments
 
-```bash
+The experiments should be executed in the following order. All paths are relative to the \`assignment2\` directory.
+
+### 1. Generate Input Data
+
+Python is used to generate the dense and sparse input matrices and the reference results.
+
+\`\`\`bash
+python scripts/generate_inputs.py
+python scripts/validate_results.py
+python scripts/generate_sparse_inputs.py
+\`\`\`
+
+The smaller dense matrices and their reference results are reused from \`assignment1/data/\`. Both assignment directories must therefore be available.
+
+### 2. Compile the C Programs
+
+Using GCC in MSYS2 UCRT64:
+
+\`\`\`bash
 gcc -O2 -std=c11 c/baseline.c -o c/baseline.exe
 gcc -O2 -std=c11 c/reordered.c -o c/reordered.exe
 gcc -O2 -std=c11 c/blocked.c -o c/blocked.exe
 gcc -O2 -std=c11 c/sparse_csr.c -o c/sparse_csr.exe
-```
+\`\`\`
 
-## Running the Experiments
+### 3. Run the Benchmarks
 
-### Part A
+For dense matrix multiplication:
 
-Run all matrix sizes:
-
-```bash
+\`\`\`bash
 ./c/baseline.exe
 ./c/reordered.exe
 ./c/blocked.exe
-```
+\`\`\`
 
-A specific size can also be tested:
+For sparse matrix multiplication:
 
-```bash
-./c/reordered.exe 500
-```
-
-### Part B
-
-Run all sparse configurations:
-
-```bash
+\`\`\`bash
 ./c/sparse_csr.exe
-```
+\`\`\`
 
-Or select a size and sparsity level:
+Each program performs correctness checks and saves its benchmark measurements in \`results/\`.
 
-```bash
+An individual dense size or sparse configuration can also be executed:
+
+\`\`\`bash
+./c/reordered.exe 500
 ./c/sparse_csr.exe 500 90
-```
+\`\`\`
 
-Running an individual configuration overwrites that method's CSV results. Run the programs without arguments to regenerate the complete benchmark files.
+Individual benchmark runs overwrite the corresponding timing CSV files. The complete datasets can be restored by running the programs without arguments.
 
-## Data Generation and Analysis
+### 4. Measure Process Memory
 
-From the `assignment2` directory:
+The memory measurement scripts use Python and \`psutil\` to launch the C executables with the \`--memory\` option.
 
-```bash
-python scripts/generate_inputs.py
-python scripts/validate_results.py
-python scripts/generate_sparse_inputs.py
-```
+Run the scripts from an environment where the MSYS2 UCRT64 runtime libraries are available:
 
-The input generation scripts use fixed random seeds so that the datasets can be reproduced.
-
-Generate the figures with:
-
-```bash
-python scripts/plot_dense_results.py
-python scripts/plot_sparse_results.py
-```
-
-Process memory measurements can be reproduced using:
-
-```bash
+\`\`\`bash
 python scripts/measure_dense_memory.py
 python scripts/measure_process_memory.py
-```
+\`\`\`
 
-The memory scripts launch the compiled C executables and should be run in an environment where the MSYS2 UCRT64 runtime libraries are available.
+These scripts save the observed process RSS in:
 
-The raw measurements are stored in `results/`, and the generated figures are saved in `results/figures/`.
+- \`results/dense_process_memory.csv\`
+- \`results/sparse_process_memory.csv\`
 
-## Notes
+The memory mode does not overwrite the timing or estimated-storage CSV files. RSS is sampled approximately every millisecond, with one process execution per configuration.
 
-Execution times include the multiplication operations and output initialisation, but exclude input loading and correctness validation. CSR conversion is measured separately.
+### 5. Generate the Figures
 
-The reported array-storage estimates do not represent total process memory. Peak RSS includes other allocations and runtime overhead.
+\`\`\`bash
+python scripts/plot_dense_results.py
+python scripts/plot_sparse_results.py
+\`\`\`
 
-The results describe the tested implementations, inputs and execution environment, rather than the performance of all possible dense or sparse multiplication algorithms.
+The figures are saved in \`results/figures/\`.
+
+## Measurement Notes
+
+Each timing configuration uses five measured repetitions after a warm-up. For small matrix sizes, repeated multiplication batches are used to reduce timing noise.
+
+CSR conversion measures the conversion of both input matrices, A and B, separately from multiplication.
+
+The array-storage estimates represent the memory required by the selected matrix representations, while RSS measures the observed memory consumption of the complete process. RSS measurements are obtained by sampling and may not capture the exact peak.
+
+The measurements were performed on a single Windows computer using sequential C implementations. Differences in operating system activity, CPU scheduling and cache behaviour may influence execution times.
+
+The results apply to the tested implementations and input configurations.
