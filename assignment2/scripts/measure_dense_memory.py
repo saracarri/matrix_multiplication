@@ -27,7 +27,7 @@ with open(output, "w", newline="") as file:
     for method, executable in commands.items():
         for n in sizes:
             process = subprocess.Popen(
-                [str(executable), str(n)],
+                [str(executable), "--memory", str(n)],
                 cwd=ROOT,
                 stdout=subprocess.DEVNULL
             )

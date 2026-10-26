@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 typedef struct {
     int n;
@@ -236,13 +237,86 @@ int run_correctness_tests(void) {
 }
 
 
+int run_memory_test(int n, int sparsity) {
+    int (*A)[n] = malloc(sizeof(int[n][n]));
+    int (*B)[n] = malloc(sizeof(int[n][n]));
+    int (*C)[n] = malloc(sizeof(int[n][n]));
+    int (*expected)[n] = malloc(sizeof(int[n][n]));
 
+    if (!A || !B || !C || !expected) {
+        fprintf(stderr, "Memory allocation failed\n");
+        free(A);
+        free(B);
+        free(C);
+        free(expected);
+        return 1;
+    }
+
+    char filename[100];
+
+    snprintf(filename, sizeof(filename),
+             "data/sparse/A_%d_%d.csv", n, sparsity);
+    load_matrix(filename, n, A);
+
+    snprintf(filename, sizeof(filename),
+             "data/sparse/B_%d_%d.csv", n, sparsity);
+    load_matrix(filename, n, B);
+
+    CSRMatrix csrA = dense_to_csr(n, A);
+    CSRMatrix csrB = dense_to_csr(n, B);
+
+    // Execute both methods without writing benchmark results
+    for (int rep = 0; rep < 5; rep++) {
+        multiply_dense(n, A, B, expected);
+        multiply_csr(&csrA, &csrB, C);
+        result_sink = C[0][0];
+    }
+
+    printf("Memory run completed for %dx%d, %d%% zeros\n",
+           n, n, sparsity);
+
+    free_csr(&csrA);
+    free_csr(&csrB);
+
+    free(A);
+    free(B);
+    free(C);
+    free(expected);
+
+    return 0;
+}
 
 int main(int argc, char *argv[]) {
     int sizes[] = {100, 300, 500, 750, 1000};
     int sparsities[] = {50, 90, 95, 99};
     int repetitions = 5;
 
+    if (argc == 4 && strcmp(argv[1], "--memory") == 0) {
+    int n = atoi(argv[2]);
+    int sparsity = atoi(argv[3]);
+
+    int valid_size = 0;
+    int valid_sparsity = 0;
+
+    for (int i = 0; i < 5; i++) {
+        if (sizes[i] == n) {
+            valid_size = 1;
+        }
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (sparsities[i] == sparsity) {
+            valid_sparsity = 1;
+        }
+    }
+
+    if (!valid_size || !valid_sparsity) {
+        fprintf(stderr, "Invalid size or sparsity\n");
+        return 1;
+    }
+
+    return run_memory_test(n, sparsity);
+}
 
 int selected_size = 0;
 int selected_sparsity = 0;

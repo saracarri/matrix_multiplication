@@ -21,7 +21,7 @@ with open(output, "w", newline="") as file:
     for n in sizes:
         for sparsity in sparsities:
             process = subprocess.Popen(
-                command + [str(n), str(sparsity)],
+                command + ["--memory", str(n), str(sparsity)],
                 cwd=ROOT,
                 stdout=subprocess.DEVNULL
             )

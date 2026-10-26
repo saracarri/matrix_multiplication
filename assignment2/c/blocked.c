@@ -273,6 +273,60 @@ int run_correctness_tests(void) {
 int main(int argc, char *argv[]) {
     int sizes[] = {10, 50, 100, 200, 300, 500, 750, 1000};
     int count = sizeof(sizes) / sizeof(sizes[0]);
+
+    if (argc == 3 && strcmp(argv[1], "--memory") == 0) {
+    int n = atoi(argv[2]);
+
+    if (n != 10 && n != 50 && n != 100 &&
+        n != 200 && n != 300 && n != 500 &&
+        n != 750 && n != 1000) {
+        fprintf(stderr, "Invalid matrix size\n");
+        return 1;
+    }
+
+    int (*A)[n] = malloc(sizeof(int[n][n]));
+    int (*B)[n] = malloc(sizeof(int[n][n]));
+    int (*C)[n] = malloc(sizeof(int[n][n]));
+
+    if (A == NULL || B == NULL || C == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        free(A);
+        free(B);
+        free(C);
+        return 1;
+    }
+
+    char filename[100];
+
+    if (n <= 300) {
+        snprintf(filename, sizeof(filename),
+                 "../assignment1/data/A_%d.csv", n);
+    } else {
+        snprintf(filename, sizeof(filename),
+                 "data/A_%d.csv", n);
+    }
+    load_matrix(filename, n, A);
+
+    if (n <= 300) {
+        snprintf(filename, sizeof(filename),
+                 "../assignment1/data/B_%d.csv", n);
+    } else {
+        snprintf(filename, sizeof(filename),
+                 "data/B_%d.csv", n);
+    }
+    load_matrix(filename, n, B);
+
+    matrix_multiplication(n, A, B, C);
+    checksum_sink = matrix_checksum(n, C);
+
+    printf("Memory run completed for %dx%d\n", n, n);
+
+    free(A);
+    free(B);
+    free(C);
+
+    return 0;
+}
     if (argc > 1 && strcmp(argv[1], "--test") == 0) {
         return run_correctness_tests() ? 0 : 1;
     }
