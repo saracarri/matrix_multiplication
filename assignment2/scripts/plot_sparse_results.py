@@ -2,9 +2,7 @@
 import csv
 from pathlib import Path
 from statistics import median
-
 import matplotlib.pyplot as plt
-
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "results"
@@ -82,10 +80,9 @@ plt.title("CSR multiplication speedup (conversion excluded)")
 
 plt.yscale("log")
 plt.grid(True, alpha=0.3)
-plt.legend()
+plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
 plt.tight_layout()
-
-plt.savefig(FIGURES / "sparse_speedup.png", dpi=180)
+plt.savefig(FIGURES / "sparse_speedup.png", dpi=300, bbox_inches="tight")
 plt.close()
 
 

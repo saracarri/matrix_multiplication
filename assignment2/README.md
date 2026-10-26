@@ -65,10 +65,14 @@ assignment2/
 
 ## Requirements
 
-- GCC (MSYS2 UCRT64)
+- Windows 11 Home
+- MSYS2 UCRT64 with GCC 16.2.0
 - Python 3.12
-- matplotlib
-- psutil
+- Matplotlib 3.10.8
+- psutil 7.1.0
+
+C programs were compiled using `-O2 -std=c11`.
+
 ## Reproducing the Experiments
 
 All commands below are run from the `assignment2` directory.
