@@ -347,23 +347,30 @@ int main(int argc, char *argv[]) {
     snprintf(memory_filename, sizeof(memory_filename),
             "results/parallel_%d_threads_memory.csv", threads);
 
-    FILE *csv = fopen(times_filename, "w");
+    FILE *csv = fopen(times_filename, "a");
 
     if (csv == NULL) {
         fprintf(stderr, "Error creating CSV file\n");
         return 1;
     }
 
-    FILE *memory_csv = fopen(memory_filename, "w");
+    FILE *memory_csv = fopen(memory_filename, "a");
 
     if (memory_csv == NULL) {
         fprintf(stderr, "Error creating memory CSV\n");
         fclose(csv);
         return 1;
     }
+    
+    fseek(csv, 0, SEEK_END);
+    if (ftell(csv) == 0) {
+        fprintf(csv, "language,size,threads,repetition,batch_size,time_seconds\n");
+    }
 
-    fprintf(csv, "language,size,threads,repetition,batch_size,time_seconds\n");
-    fprintf(memory_csv, "language,size,threads,estimated_array_storage_mib\n");
+    fseek(memory_csv, 0, SEEK_END);
+    if (ftell(memory_csv) == 0) {
+        fprintf(memory_csv, "language,size,threads,estimated_array_storage_mib\n");
+    }
 
     for (int i = 0; i < count; i++) {
         int n = sizes[i];
