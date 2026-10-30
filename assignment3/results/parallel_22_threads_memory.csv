@@ -1,0 +1,6 @@
+language,size,threads,estimated_array_storage_mib
+C,100,22,0.114441
+C,300,22,1.029968
+C,500,22,2.861023
+C,750,22,6.437302
+C,1000,22,11.444092
