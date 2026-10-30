@@ -111,7 +111,7 @@ int compare_doubles(const void *a, const void *b) {
 
 static volatile long long checksum_sink;
 
-void benchmark(int n, int repetitions, FILE *csv) {
+void benchmark(int n, int repetitions, FILE *csv, int threads) {
     double times[5];
 
     int (*A)[n] = malloc(sizeof(int[n][n]));
@@ -165,8 +165,8 @@ void benchmark(int n, int repetitions, FILE *csv) {
 
         times[rep - 1] = elapsed;
 
-        fprintf(csv, "C,%d,%d,%d,%.9f\n",
-                n, rep, batch_size, elapsed);
+        fprintf(csv, "C,%d,%d,%d,%d,%.9f\n",
+        n, threads, rep, batch_size, elapsed);
 
         printf("Repetition %d: %.6f ms\n",
                rep, elapsed * 1000);
@@ -264,6 +264,7 @@ int run_correctness_tests(void) {
 int main(int argc, char *argv[]) {
     int sizes[] = {10, 50, 100, 200, 300, 500, 750, 1000};
     int count = sizeof(sizes) / sizeof(sizes[0]);
+    int threads = omp_get_max_threads();
 
     if (argc == 3 && strcmp(argv[1], "--memory") == 0) {
         int n = atoi(argv[2]);
@@ -337,14 +338,23 @@ int main(int argc, char *argv[]) {
         count = 1;
     }
 
-    FILE *csv = fopen("results/parallel_times.csv", "w");
+    char times_filename[100];
+    char memory_filename[100];
+
+    snprintf(times_filename, sizeof(times_filename),
+            "results/parallel_%d_threads_times.csv", threads);
+
+    snprintf(memory_filename, sizeof(memory_filename),
+            "results/parallel_%d_threads_memory.csv", threads);
+
+    FILE *csv = fopen(times_filename, "w");
 
     if (csv == NULL) {
         fprintf(stderr, "Error creating CSV file\n");
         return 1;
     }
 
-    FILE *memory_csv = fopen("results/parallel_memory.csv", "w");
+    FILE *memory_csv = fopen(memory_filename, "w");
 
     if (memory_csv == NULL) {
         fprintf(stderr, "Error creating memory CSV\n");
@@ -352,19 +362,19 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    fprintf(csv, "language,size,repetition,batch_size,time_seconds\n");
-    fprintf(memory_csv, "language,size,estimated_array_storage_mib\n");
+    fprintf(csv, "language,size,threads,repetition,batch_size,time_seconds\n");
+    fprintf(memory_csv, "language,size,threads,estimated_array_storage_mib\n");
 
     for (int i = 0; i < count; i++) {
         int n = sizes[i];
 
         printf("Matrix size: %dx%d\n", n, n);
 
-        benchmark(n, 5, csv);
+        benchmark(n, 5, csv, threads);
 
         double memory = measure_memory(n);
 
-        fprintf(memory_csv, "C,%d,%.6f\n", n, memory);
+        fprintf(memory_csv, "C,%d,%d,%.6f\n", n, threads, memory);
 
         printf("Estimated array storage: %.6f MiB\n", memory);
         printf("\n");
