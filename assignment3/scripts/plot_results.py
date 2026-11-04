@@ -47,10 +47,12 @@ for threads in THREADS:
         for n in SIZES
     ]
 
-    plt.plot(SIZES, times, marker="o", label=f"{threads} threads")
+    plt.plot(SIZES, times, marker="o", label=f"{threads} thread{'s' if threads != 1 else ''}")
+
 
 plt.xlabel("Matrix size (n x n)")
-plt.ylabel("Median execution time (ms)")
+plt.ylabel("Median execution time (ms, log scale)")
+plt.yscale("log")
 plt.title("Sequential vs parallel matrix multiplication")
 plt.legend()
 plt.grid(alpha=0.3)
@@ -141,7 +143,7 @@ for threads in THREADS:
         for n in SIZES
     ]
 
-    plt.plot(SIZES, values, marker="o", label=f"{threads} threads")
+    plt.plot(SIZES, values, marker="o", label=f"{threads} thread{'s' if threads != 1 else ''}")
 
 plt.xlabel("Matrix size (n x n)")
 plt.ylabel("Peak process RSS (MiB)")
