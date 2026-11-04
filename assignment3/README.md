@@ -1,3 +1,4 @@
+
 # Assignment 3 — Parallel Matrix Multiplication with OpenMP
 
 ## Overview
@@ -13,7 +14,7 @@ The experiment evaluates execution time, memory usage, speedup and parallel effi
 
 ## Requirements
 
-The experiments were conducted on Windows 11 Home with an Intel Core Ultra 7 155H processor (16 physical cores, 22 logical processors) and 32 GiB RAM.
+The experiments were conducted on Windows 11 Home with an Intel Core Ultra 7 155H processor (16 physical cores, 22 logical processors) and 32 GiB of RAM.
 
 Software used:
 
@@ -22,6 +23,8 @@ Software used:
 - Python 3.12
 - Matplotlib 3.10.8
 - psutil 7.1.0
+
+The C executables should be run from the MSYS2 UCRT64 environment, where the required runtime libraries, including `libgomp-1.dll`, are available.
 
 ## Project Structure
 
@@ -110,11 +113,15 @@ Individual configurations can also be executed:
 OMP_NUM_THREADS=4 ./c/parallel.exe 500
 ```
 
-Raw measurements are saved in `results/`.
+Raw measurements are saved in `results/`. Each file contains five measured repetitions for every tested matrix size.
+
+The parallel results are stored in separate CSV files for each thread configuration.
 
 ## Memory Measurements
 
-Estimated array storage is calculated for the three dense matrices.
+Estimated array storage is calculated for the three dense matrices A, B and C.
+
+For matrices of size 1000, the estimated storage is approximately 11.44 MiB.
 
 Peak process Resident Set Size (RSS) is measured separately using Python and psutil.
 
@@ -126,7 +133,7 @@ python scripts/measure_process_memory.py
 
 The results are stored in `results/process_memory.csv`.
 
-Memory is sampled approximately every 1 ms, so short-lived peaks may not be captured.
+Memory is sampled approximately every 1 ms, so short-lived peaks may not be captured. On Windows, the RSS metric reported by psutil corresponds to the process working set.
 
 ## Data Analysis
 
@@ -140,17 +147,17 @@ This calculates median execution time, interquartile range (IQR), speedup and ef
 
 Speedup is defined as:
 
-\[
-S(p) = \frac{T_{\text{seq}}(n)}{T_p(n)}
-\]
+$$
+S(p) = \frac{T_{\mathrm{seq}}(n)}{T_p(n)}
+$$
 
 Parallel efficiency is:
 
-\[
+$$
 E(p) = \frac{S(p)}{p}
-\]
+$$
 
-Both metrics use median execution times.
+Both metrics use median execution times. Speedup is calculated relative to the equivalent sequential implementation.
 
 The summary is saved in `results/performance_summary.csv`.
 
@@ -164,18 +171,20 @@ python scripts/plot_results.py
 
 Four figures are produced in `figures/`:
 
-- `execution_time.png`: sequential and parallel execution times.
+- `execution_time.png`: sequential and parallel execution times, using a logarithmic time axis.
 - `speedup.png`: speedup across thread configurations.
 - `efficiency.png`: parallel efficiency.
-- `memory_usage.png`: peak process RSS.
+- `memory_usage.png`: observed peak process RSS.
 
 ## Results
 
 Parallel execution significantly improved performance for larger matrices.
 
-For matrices of size 1000, the maximum observed speedup was approximately **7.24× with 22 threads**.
+For matrices of size 1000, the maximum observed speedup was approximately **7.24x with 22 threads**.
 
-However, using more threads did not always produce better results. For size 500, the best performance was achieved with 16 threads.
+However, using more threads did not always produce better results. For sizes 500 and 750, the best performance was achieved with 16 threads.
+
+Some configurations showed speedup values slightly above the number of threads. Comparing the two-thread implementation with the parallel implementation using one thread helped explain these results. For size 1000, the speedup decreased from 2.06 to approximately 1.90 when using the one-thread implementation as the reference.
 
 Parallel efficiency generally decreased as thread count increased, while memory consumption remained relatively similar across implementations.
 
@@ -185,10 +194,10 @@ These findings are limited to the tested hardware, input matrices and execution 
 
 The research report is available in the `report/` directory.
 
-It includes the experimental methodology, results, figures, discussion and conclusions.
+It includes the experimental methodology, results, figures, discussion, conclusions and references.
 
 ## Use of Artificial Intelligence
 
-ChatGPT (OpenAI) was used to assist with code development, debugging, data analysis and report writing.
+ChatGPT (OpenAI) was used to assist with code development, debugging, experimental analysis and report writing. Claude (Anthropic) was also used to review the report and suggest improvements.
 
-All experimental measurements were obtained from local executions and reviewed by the author.
+All experiments were executed and validated locally. The measurements were obtained from the actual runs, and the author was responsible for reviewing the results and interpreting the findings.
