@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
+#include <windows.h>
+#include <psapi.h>
 
 #define WARMUP_RUNS 1
 #define REPETITIONS 5
@@ -100,6 +102,21 @@ void summarize(const double values[REPETITIONS],
     // Tukey hinges for five observations
     *median = sorted[2];
     *iqr = sorted[3] - sorted[1];
+}
+
+double get_peak_memory_mib(void) {
+    PROCESS_MEMORY_COUNTERS counters;
+
+    if (GetProcessMemoryInfo(
+            GetCurrentProcess(),
+            &counters,
+            sizeof(counters))) {
+
+        return (double)counters.PeakWorkingSetSize /
+               (1024.0 * 1024.0);
+    }
+
+    return -1.0;
 }
 
 int main(int argc, char *argv[]) {
@@ -288,6 +305,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    double local_memory = get_peak_memory_mib();
+
+    double total_peak_memory = 0.0;
+    double max_worker_memory = 0.0;
+
+    MPI_Reduce(&local_memory, &total_peak_memory, 1,
+            MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    MPI_Reduce(&local_memory, &max_worker_memory, 1,
+            MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            
     if (rank == 0) {
         double median, iqr;
 
@@ -296,6 +324,29 @@ int main(int argc, char *argv[]) {
         printf("Warm-up runs: %d\n", WARMUP_RUNS);
         printf("Measured repetitions: %d\n", REPETITIONS);
         printf("Validation: PASS\n");
+        printf("Sum of worker peak memory: %.2f MiB\n",
+       total_peak_memory);
+        printf("Maximum worker peak memory: %.2f MiB\n",
+       max_worker_memory);
+       
+       FILE *memory_csv = fopen("results/distributed_memory.csv", "a+");
+       
+       if (memory_csv == NULL) {
+            fprintf(stderr, "Cannot open memory results CSV\n");
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+
+        fseek(memory_csv, 0, SEEK_END);
+        
+        if (ftell(memory_csv) == 0) {
+            fprintf(memory_csv,
+                    "n,processes,sum_worker_peak_mib,max_worker_peak_mib\n");
+        }
+
+        fprintf(memory_csv, "%d,%d,%.6f,%.6f\n",
+                n, size, total_peak_memory, max_worker_memory);
+
+        fclose(memory_csv);
 
         const char *labels[5] = {
             "Total", "Broadcast", "Scatter",
