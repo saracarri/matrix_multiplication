@@ -111,6 +111,15 @@ int main(int argc, char *argv[]) {
     int n = (int)parsed_n;
     size_t elements = (size_t)n * n;
 
+    double start, total_start;
+    double broadcast_time, scatter_time;
+    double compute_time, gather_time;
+    double total_time;
+
+    double max_broadcast, max_scatter;
+    double max_compute, max_gather;
+    double max_total;
+
     int *A = NULL;
     int *C = NULL;
     int *B = malloc(elements * sizeof(int));
@@ -167,25 +176,72 @@ int main(int argc, char *argv[]) {
         load_matrix(filename, n, B);
     }
 
-    // Send matrix B to all processes
+
+    // Synchronize processes before measurement
+    MPI_Barrier(MPI_COMM_WORLD);
+    total_start = MPI_Wtime();
+
+    // Broadcast matrix B
+    start = MPI_Wtime();
+
     MPI_Bcast(B, n * n, MPI_INT, 0, MPI_COMM_WORLD);
 
+    broadcast_time = MPI_Wtime() - start;
+
     // Distribute rows of A
+    start = MPI_Wtime();
+
     MPI_Scatterv(A, sendcounts, displs, MPI_INT,
                  local_A, sendcounts[rank], MPI_INT,
                  0, MPI_COMM_WORLD);
 
-    // Compute each process's assigned rows
+    scatter_time = MPI_Wtime() - start;
+
+    // Compute local matrix multiplication
+    start = MPI_Wtime();
+
     multiply_local(n, local_rows, local_A, B, local_C);
 
-    // Collect the partial results
+    compute_time = MPI_Wtime() - start;
+
+    // Collect partial results
+    start = MPI_Wtime();
+
     MPI_Gatherv(local_C, sendcounts[rank], MPI_INT,
                 C, sendcounts, displs, MPI_INT,
                 0, MPI_COMM_WORLD);
 
+    gather_time = MPI_Wtime() - start;
+
+    // Synchronize before ending measurement
+    MPI_Barrier(MPI_COMM_WORLD);
+    total_time = MPI_Wtime() - total_start;
+
+    // Report maximum elapsed time across processes
+    MPI_Reduce(&broadcast_time, &max_broadcast, 1,
+               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    MPI_Reduce(&scatter_time, &max_scatter, 1,
+               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    MPI_Reduce(&compute_time, &max_compute, 1,
+               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    MPI_Reduce(&gather_time, &max_gather, 1,
+               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    MPI_Reduce(&total_time, &max_total, 1,
+               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+
     if (rank == 0) {
         printf("Matrix size: %d x %d\n", n, n);
         printf("MPI processes: %d\n", size);
+        printf("Total time: %.6f ms\n", max_total * 1000);
+        printf("Broadcast time: %.6f ms\n", max_broadcast * 1000);
+        printf("Scatter time: %.6f ms\n", max_scatter * 1000);
+        printf("Computation time: %.6f ms\n", max_compute * 1000);
+        printf("Gather time: %.6f ms\n", max_gather * 1000);
 
         if (validate_matrix(n, C)) {
             printf("Validation: PASS\n");
