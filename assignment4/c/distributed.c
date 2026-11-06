@@ -1,8 +1,10 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
+
+#define WARMUP_RUNS 1
+#define REPETITIONS 5
 
 void load_matrix(const char *filename, int n, int *matrix) {
     FILE *file = fopen(filename, "r");
@@ -82,6 +84,24 @@ void multiply_local(int n, int rows,
     }
 }
 
+int compare_doubles(const void *a, const void *b) {
+    double x = *(const double *)a;
+    double y = *(const double *)b;
+    return (x > y) - (x < y);
+}
+
+void summarize(const double values[REPETITIONS],
+               double *median, double *iqr) {
+    double sorted[REPETITIONS];
+
+    memcpy(sorted, values, sizeof(sorted));
+    qsort(sorted, REPETITIONS, sizeof(double), compare_doubles);
+
+    // Tukey hinges for five observations
+    *median = sorted[2];
+    *iqr = sorted[3] - sorted[1];
+}
+
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
@@ -90,9 +110,8 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if (argc != 2) {
-        if (rank == 0) {
+        if (rank == 0)
             fprintf(stderr, "Usage: distributed.exe <size>\n");
-        }
         MPI_Finalize();
         return 1;
     }
@@ -101,24 +120,14 @@ int main(int argc, char *argv[]) {
     long parsed_n = strtol(argv[1], &end, 10);
 
     if (*end != '\0' || parsed_n <= 0 || parsed_n > 1000) {
-        if (rank == 0) {
+        if (rank == 0)
             fprintf(stderr, "Invalid matrix size\n");
-        }
         MPI_Finalize();
         return 1;
     }
 
     int n = (int)parsed_n;
     size_t elements = (size_t)n * n;
-
-    double start, total_start;
-    double broadcast_time, scatter_time;
-    double compute_time, gather_time;
-    double total_time;
-
-    double max_broadcast, max_scatter;
-    double max_compute, max_gather;
-    double max_total;
 
     int *A = NULL;
     int *C = NULL;
@@ -127,17 +136,15 @@ int main(int argc, char *argv[]) {
     int *sendcounts = malloc(size * sizeof(int));
     int *displs = malloc(size * sizeof(int));
 
-    if (B == NULL || sendcounts == NULL || displs == NULL) {
+    if (!B || !sendcounts || !displs) {
         fprintf(stderr, "Memory allocation failed\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-    // Calculate row distribution
     int offset = 0;
 
     for (int p = 0; p < size; p++) {
         int rows = n / size + (p < n % size ? 1 : 0);
-
         sendcounts[p] = rows * n;
         displs[p] = offset;
         offset += sendcounts[p];
@@ -145,15 +152,12 @@ int main(int argc, char *argv[]) {
 
     int local_rows = sendcounts[rank] / n;
     size_t local_elements = (size_t)local_rows * n;
+    size_t local_capacity = local_elements ? local_elements : 1;
 
-    // Allocate at least one element for empty partitions
-    int *local_A = malloc((local_elements ?
-                           local_elements : 1) * sizeof(int));
+    int *local_A = malloc(local_capacity * sizeof(int));
+    int *local_C = calloc(local_capacity, sizeof(int));
 
-    int *local_C = calloc(local_elements ?
-                          local_elements : 1, sizeof(int));
-
-    if (local_A == NULL || local_C == NULL) {
+    if (!local_A || !local_C) {
         fprintf(stderr, "Local memory allocation failed\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
@@ -162,7 +166,7 @@ int main(int argc, char *argv[]) {
         A = malloc(elements * sizeof(int));
         C = malloc(elements * sizeof(int));
 
-        if (A == NULL || C == NULL) {
+        if (!A || !C) {
             fprintf(stderr, "Memory allocation failed\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
@@ -176,79 +180,143 @@ int main(int argc, char *argv[]) {
         load_matrix(filename, n, B);
     }
 
-
-    // Synchronize processes before measurement
-    MPI_Barrier(MPI_COMM_WORLD);
-    total_start = MPI_Wtime();
-
-    // Broadcast matrix B
-    start = MPI_Wtime();
-
-    MPI_Bcast(B, n * n, MPI_INT, 0, MPI_COMM_WORLD);
-
-    broadcast_time = MPI_Wtime() - start;
-
-    // Distribute rows of A
-    start = MPI_Wtime();
-
-    MPI_Scatterv(A, sendcounts, displs, MPI_INT,
-                 local_A, sendcounts[rank], MPI_INT,
-                 0, MPI_COMM_WORLD);
-
-    scatter_time = MPI_Wtime() - start;
-
-    // Compute local matrix multiplication
-    start = MPI_Wtime();
-
-    multiply_local(n, local_rows, local_A, B, local_C);
-
-    compute_time = MPI_Wtime() - start;
-
-    // Collect partial results
-    start = MPI_Wtime();
-
-    MPI_Gatherv(local_C, sendcounts[rank], MPI_INT,
-                C, sendcounts, displs, MPI_INT,
-                0, MPI_COMM_WORLD);
-
-    gather_time = MPI_Wtime() - start;
-
-    // Synchronize before ending measurement
-    MPI_Barrier(MPI_COMM_WORLD);
-    total_time = MPI_Wtime() - total_start;
-
-    // Report maximum elapsed time across processes
-    MPI_Reduce(&broadcast_time, &max_broadcast, 1,
-               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
-    MPI_Reduce(&scatter_time, &max_scatter, 1,
-               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
-    MPI_Reduce(&compute_time, &max_compute, 1,
-               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
-    MPI_Reduce(&gather_time, &max_gather, 1,
-               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
-    MPI_Reduce(&total_time, &max_total, 1,
-               MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
+    FILE *csv = NULL;
 
     if (rank == 0) {
-        printf("Matrix size: %d x %d\n", n, n);
-        printf("MPI processes: %d\n", size);
-        printf("Total time: %.6f ms\n", max_total * 1000);
-        printf("Broadcast time: %.6f ms\n", max_broadcast * 1000);
-        printf("Scatter time: %.6f ms\n", max_scatter * 1000);
-        printf("Computation time: %.6f ms\n", max_compute * 1000);
-        printf("Gather time: %.6f ms\n", max_gather * 1000);
+        csv = fopen("results/distributed_times.csv", "a+");
 
-        if (validate_matrix(n, C)) {
-            printf("Validation: PASS\n");
-        } else {
-            printf("Validation: FAIL\n");
+        if (!csv) {
+            fprintf(stderr, "Cannot open results CSV\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
+
+        fseek(csv, 0, SEEK_END);
+
+        if (ftell(csv) == 0) {
+            fprintf(csv,
+                "n,processes,repetition,total_ms,"
+                "broadcast_ms,scatter_ms,compute_ms,gather_ms\n");
+        }
+    }
+
+    double total_samples[REPETITIONS];
+    double broadcast_samples[REPETITIONS];
+    double scatter_samples[REPETITIONS];
+    double compute_samples[REPETITIONS];
+    double gather_samples[REPETITIONS];
+
+    for (int run = 0;
+         run < WARMUP_RUNS + REPETITIONS;
+         run++) {
+
+        memset(local_C, 0, local_capacity * sizeof(int));
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        double total_start = MPI_Wtime();
+
+        double start = MPI_Wtime();
+
+        MPI_Bcast(B, n * n, MPI_INT, 0, MPI_COMM_WORLD);
+
+        double broadcast_time = MPI_Wtime() - start;
+
+        start = MPI_Wtime();
+
+        MPI_Scatterv(A, sendcounts, displs, MPI_INT,
+                     local_A, sendcounts[rank], MPI_INT,
+                     0, MPI_COMM_WORLD);
+
+        double scatter_time = MPI_Wtime() - start;
+
+        start = MPI_Wtime();
+
+        multiply_local(n, local_rows, local_A, B, local_C);
+
+        double compute_time = MPI_Wtime() - start;
+
+        start = MPI_Wtime();
+
+        MPI_Gatherv(local_C, sendcounts[rank], MPI_INT,
+                    C, sendcounts, displs, MPI_INT,
+                    0, MPI_COMM_WORLD);
+
+        double gather_time = MPI_Wtime() - start;
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        double total_time = MPI_Wtime() - total_start;
+
+        double local_times[5] = {
+            total_time,
+            broadcast_time,
+            scatter_time,
+            compute_time,
+            gather_time
+        };
+
+        double max_times[5] = {0};
+
+        MPI_Reduce(local_times, max_times, 5,
+                   MPI_DOUBLE, MPI_MAX, 0,
+                   MPI_COMM_WORLD);
+
+        if (rank == 0) {
+            if (!validate_matrix(n, C)) {
+                fprintf(stderr,
+                        "Validation: FAIL (run %d)\n", run);
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            if (run >= WARMUP_RUNS) {
+                int r = run - WARMUP_RUNS;
+
+                total_samples[r] = max_times[0] * 1000;
+                broadcast_samples[r] = max_times[1] * 1000;
+                scatter_samples[r] = max_times[2] * 1000;
+                compute_samples[r] = max_times[3] * 1000;
+                gather_samples[r] = max_times[4] * 1000;
+
+                fprintf(csv,
+                    "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                    n, size, r + 1,
+                    total_samples[r],
+                    broadcast_samples[r],
+                    scatter_samples[r],
+                    compute_samples[r],
+                    gather_samples[r]);
+            }
+        }
+    }
+
+    if (rank == 0) {
+        double median, iqr;
+
+        printf("\nMatrix size: %d x %d\n", n, n);
+        printf("MPI processes: %d\n", size);
+        printf("Warm-up runs: %d\n", WARMUP_RUNS);
+        printf("Measured repetitions: %d\n", REPETITIONS);
+        printf("Validation: PASS\n");
+
+        const char *labels[5] = {
+            "Total", "Broadcast", "Scatter",
+            "Computation", "Gather"
+        };
+
+        const double *samples[5] = {
+            total_samples, broadcast_samples,
+            scatter_samples, compute_samples,
+            gather_samples
+        };
+
+        printf("\nMedian and IQR (ms):\n");
+
+        for (int i = 0; i < 5; i++) {
+            summarize(samples[i], &median, &iqr);
+            printf("%-13s %.6f (IQR: %.6f)\n",
+                   labels[i], median, iqr);
+        }
+
+        fclose(csv);
     }
 
     free(A);
