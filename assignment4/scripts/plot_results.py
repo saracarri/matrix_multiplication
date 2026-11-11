@@ -181,6 +181,103 @@ def plot_memory(memory, sizes, processes):
     plt.close()
 
 
+
+def load_phase_times():
+    measurements = {}
+
+    with open(TIME_CSV, newline="") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            if int(row["n"]) != 1000:
+                continue
+
+            p = int(row["processes"])
+
+            if p not in measurements:
+                measurements[p] = {
+                    "broadcast": [],
+                    "scatter": [],
+                    "compute": [],
+                    "gather": [],
+                }
+
+            for phase, column in [
+                ("broadcast", "broadcast_ms"),
+                ("scatter", "scatter_ms"),
+                ("compute", "compute_ms"),
+                ("gather", "gather_ms"),
+            ]:
+                measurements[p][phase].append(float(row[column]))
+
+    return {
+        p: {
+            phase: median(values)
+            for phase, values in phases.items()
+        }
+        for p, phases in measurements.items()
+    }
+
+
+def plot_computation(phases):
+    processes = sorted(phases)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(
+        processes,
+        [phases[p]["compute"] for p in processes],
+        marker="o",
+        label="Computation",
+    )
+
+    plt.xlabel("Number of MPI processes")
+    plt.ylabel("Maximum computation duration (ms)")
+    plt.title("MPI Computation Time (n=1000)")
+    plt.xticks(processes)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    plt.savefig(
+        FIGURES / "computation_time.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_communication(phases):
+    processes = sorted(phases)
+
+    plt.figure(figsize=(8, 5))
+
+    for key, label in [
+        ("broadcast", "Broadcast"),
+        ("scatter", "Scatter"),
+        ("gather", "Gather"),
+    ]:
+        plt.plot(
+            processes,
+            [phases[p][key] for p in processes],
+            marker="o",
+            label=label,
+        )
+
+    plt.xlabel("Number of MPI processes")
+    plt.ylabel("Maximum phase duration (ms)")
+    plt.title("MPI Communication Phase Durations (n=1000)")
+    plt.xticks(processes)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    plt.savefig(
+        FIGURES / "communication_overhead.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def main():
     times = load_times()
     memory = load_memory()
@@ -192,6 +289,9 @@ def main():
     plot_speedup(times, sizes, processes)
     plot_efficiency(times, sizes, processes)
     plot_memory(memory, sizes, processes)
+    phases = load_phase_times()
+    plot_computation(phases)
+    plot_communication(phases)
 
     print("All figures generated successfully.")
     print(f"Figures saved in: {FIGURES}")
