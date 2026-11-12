@@ -126,11 +126,24 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    if (argc != 2) {
+    if (argc != 2 && argc != 3) {
         if (rank == 0)
-            fprintf(stderr, "Usage: distributed.exe <size>\n");
+            fprintf(stderr, "Usage: distributed.exe <size> [--no-save]\n");
         MPI_Finalize();
         return 1;
+    }
+
+    int save_results = 1;
+
+    if (argc == 3) {
+        if (strcmp(argv[2], "--no-save") != 0) {
+            if (rank == 0)
+                fprintf(stderr, "Unknown option: %s\n", argv[2]);
+            MPI_Finalize();
+            return 1;
+        }
+
+        save_results = 0;
     }
 
     char *end;
@@ -199,7 +212,7 @@ int main(int argc, char *argv[]) {
 
     FILE *csv = NULL;
 
-    if (rank == 0) {
+    if (rank == 0 && save_results) {
         csv = fopen("results/distributed_times.csv", "a+");
 
         if (!csv) {
@@ -293,14 +306,16 @@ int main(int argc, char *argv[]) {
                 compute_samples[r] = max_times[3] * 1000;
                 gather_samples[r] = max_times[4] * 1000;
 
-                fprintf(csv,
-                    "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
-                    n, size, r + 1,
-                    total_samples[r],
-                    broadcast_samples[r],
-                    scatter_samples[r],
-                    compute_samples[r],
-                    gather_samples[r]);
+                if (save_results) {
+                    fprintf(csv,
+                        "%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                        n, size, r + 1,
+                        total_samples[r],
+                        broadcast_samples[r],
+                        scatter_samples[r],
+                        compute_samples[r],
+                        gather_samples[r]);
+                }
             }
         }
     }
@@ -329,24 +344,26 @@ int main(int argc, char *argv[]) {
         printf("Maximum worker peak memory: %.2f MiB\n",
        max_worker_memory);
        
-       FILE *memory_csv = fopen("results/distributed_memory.csv", "a+");
-       
-       if (memory_csv == NULL) {
-            fprintf(stderr, "Cannot open memory results CSV\n");
-            MPI_Abort(MPI_COMM_WORLD, 1);
+               if (save_results) {
+            FILE *memory_csv = fopen("results/distributed_memory.csv", "a+");
+
+            if (memory_csv == NULL) {
+                fprintf(stderr, "Cannot open memory results CSV\n");
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+
+            fseek(memory_csv, 0, SEEK_END);
+
+            if (ftell(memory_csv) == 0) {
+                fprintf(memory_csv,
+                        "n,processes,sum_worker_peak_mib,max_worker_peak_mib\n");
+            }
+
+            fprintf(memory_csv, "%d,%d,%.6f,%.6f\n",
+                    n, size, total_peak_memory, max_worker_memory);
+
+            fclose(memory_csv);
         }
-
-        fseek(memory_csv, 0, SEEK_END);
-        
-        if (ftell(memory_csv) == 0) {
-            fprintf(memory_csv,
-                    "n,processes,sum_worker_peak_mib,max_worker_peak_mib\n");
-        }
-
-        fprintf(memory_csv, "%d,%d,%.6f,%.6f\n",
-                n, size, total_peak_memory, max_worker_memory);
-
-        fclose(memory_csv);
 
         const char *labels[5] = {
             "Total", "Broadcast", "Scatter",
@@ -367,7 +384,9 @@ int main(int argc, char *argv[]) {
                    labels[i], median, iqr);
         }
 
-        fclose(csv);
+        if (csv != NULL) {
+            fclose(csv);
+        }
     }
 
     free(A);
