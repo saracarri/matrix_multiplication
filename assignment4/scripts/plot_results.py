@@ -278,6 +278,57 @@ def plot_communication(phases):
     plt.close()
 
 
+def plot_end_to_end():
+    measurements = {}
+
+    path = RESULTS / "distributed_end_to_end.csv"
+
+    with open(path, newline="") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            n = int(row["n"])
+            p = int(row["processes"])
+            elapsed = float(row["end_to_end_ms"])
+
+            measurements.setdefault((n, p), []).append(elapsed)
+
+    medians = {
+        key: median(values)
+        for key, values in measurements.items()
+    }
+
+    sizes = sorted({n for n, p in medians})
+    processes = sorted({p for n, p in medians})
+
+    plt.figure(figsize=(8, 5))
+
+    for p in processes:
+        x = [n for n in sizes if (n, p) in medians]
+        y = [medians[(n, p)] for n in x]
+
+        plt.plot(
+            x,
+            y,
+            marker="o",
+            label=f"{p} processes",
+        )
+
+    plt.xlabel("Matrix size (n)")
+    plt.ylabel("End-to-end execution time (ms)")
+    plt.title("MPI End-to-End Execution Time")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    plt.savefig(
+        FIGURES / "end_to_end_time.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def main():
     times = load_times()
     memory = load_memory()
@@ -292,6 +343,7 @@ def main():
     phases = load_phase_times()
     plot_computation(phases)
     plot_communication(phases)
+    plot_end_to_end()
 
     print("All figures generated successfully.")
     print(f"Figures saved in: {FIGURES}")
