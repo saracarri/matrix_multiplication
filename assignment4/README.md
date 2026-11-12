@@ -29,15 +29,31 @@ The computation is divided among MPI processes:
 
 ## Requirements
 
-- Windows 11
+- Windows 11 Home
 - MSYS2 UCRT64
 - GCC 16.2.0
-- Microsoft MPI 10.1 (Runtime and development tools)
+- Microsoft MPI 10.1 (MS-MPI)
 - Python 3.12
-- Matplotlib
+- Matplotlib 3.10.8
 - Windows PSAPI library
 
-Python is used for running benchmarks, processing measurements and generating figures.
+The MPI compiler was installed through MSYS2 UCRT64 using:
+
+```bash
+pacman -S mingw-w64-ucrt-x86_64-msmpi
+```
+
+Microsoft MPI Runtime was installed separately to provide `mpiexec.exe`.
+
+The C implementation is compiled and executed from MSYS2 UCRT64. Python benchmark and plotting scripts are executed from Windows PowerShell.
+
+The Python scripts use the following fixed path for MPI:
+
+```text
+C:\Program Files\Microsoft MPI\Bin\mpiexec.exe
+```
+
+This path must be updated if Microsoft MPI is installed elsewhere.
 
 ## Compilation
 
@@ -74,18 +90,30 @@ The matrices are reused from Assignments 1 and 2.
 For matrix sizes up to 300, the implementation reads:
 
 ```text
-assignment1/data/A_n.csv
-assignment1/data/B_n.csv
-assignment1/data/expected/C_n.csv
+../assignment1/data/A_n.csv
+../assignment1/data/B_n.csv
+../assignment1/data/expected/C_n.csv
 ```
 
-For larger sizes, the corresponding files are read from `assignment2/data/`.
+For larger sizes, the corresponding files are read from `../assignment2/data/`.
+
+The repository must contain `assignment1`, `assignment2` and `assignment4` as sibling directories. The program must be executed from `assignment4` so that the relative paths resolve correctly.
 
 All matrices are square and contain integer values. The computed results are compared with the expected matrices.
 
-The program must be executed from the `assignment4` directory so that the relative paths resolve correctly.
+The largest tested size was n=1000, which was also the maximum supported by the available input datasets and implementation. No larger configurations were attempted.
 
 ## Experimental Setup
+
+All experiments were performed on a single computer with the following hardware:
+
+- CPU: Intel Core Ultra 7 155H
+- Physical cores: 16
+- Logical processors: 22
+- RAM: approximately 32 GiB
+- Operating system: Windows 11 Home
+
+No explicit process affinity was configured. All MPI processes shared the same physical machine and memory resources.
 
 The following matrix sizes were tested:
 
@@ -123,6 +151,8 @@ Two metrics are reported:
 Memory measurements are expressed in MiB.
 
 The sum of individual peaks does not necessarily represent the maximum simultaneous memory consumption.
+
+The root process stores the complete input and output matrices and loads the expected result during validation. Its memory requirements therefore differ from those of the other processes.
 
 ### End-to-End Time
 
@@ -194,7 +224,7 @@ This generates:
 
 The comparison uses the sequential and OpenMP results from Assignment 3.
 
-The timing boundaries are not identical: MPI includes communication operations, while the previous implementations primarily measure multiplication. The comparison should therefore be interpreted with this limitation in mind.
+The timing boundaries are not identical: MPI includes data distribution, result collection and synchronization, while the previous implementations measure their multiplication functions. The comparison should therefore be interpreted with this limitation in mind.
 
 ## Results
 
@@ -219,11 +249,21 @@ For n=1000, the median MPI execution time decreased from 341.60 ms with one proc
 
 However, smaller matrices benefited less from additional processes, and memory usage increased as more processes were introduced.
 
+## Additional Materials
+
+The file `c/mpi_test.c` contains a simple MPI program used to verify that multiple processes could be launched correctly before implementing matrix multiplication.
+
+The `results/preliminary/` directory contains measurements from the initial development and testing stages. These results are kept for reference but are not used in the final analysis.
+
+The main experimental results are stored in the CSV files directly inside `results/`.
+
 ## Limitations
 
 All MPI experiments were executed on a single computer. Therefore, the results reflect local multi-process communication rather than communication between physical machines.
 
 The experiments were limited to the tested matrix sizes, process counts, integer inputs and available hardware.
+
+No explicit process affinity was configured. Differences in CPU core performance, shared memory bandwidth and processor frequency may have influenced scalability, but these effects were not measured separately.
 
 Communication phase measurements may include waiting time and do not represent isolated network transfer costs.
 
