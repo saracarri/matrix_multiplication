@@ -219,8 +219,8 @@ python scripts/compare_methods.py
 
 This generates:
 
-- `results/methods_comparison.csv`
-- `figures/methods_comparison.png`
+- `results/methods_comparison.csv` 
+- `figures/methods_comparison.png` 
 
 The comparison uses the sequential and OpenMP results from Assignment 3.
 
