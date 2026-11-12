@@ -62,7 +62,7 @@ def plot_execution_time(times, sizes, processes):
         x = [n for n in sizes if (n, p) in times]
         y = [times[(n, p)] for n in x]
 
-        plt.plot(x, y, marker="o", label=f"{p} processes")
+        plt.plot(x, y, marker="o", label=f"{p} process" if p == 1 else f"{p} processes")
 
     plt.xlabel("Matrix size (n)")
     plt.ylabel("Execution time (ms)")
@@ -311,7 +311,7 @@ def plot_end_to_end():
             x,
             y,
             marker="o",
-            label=f"{p} processes",
+            label=f"{p} process" if p == 1 else f"{p} processes",
         )
 
     plt.xlabel("Matrix size (n)")
